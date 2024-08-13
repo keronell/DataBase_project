@@ -322,7 +322,7 @@ public class Program {
 
     }
 
-    private static void addAnswerToMultiQuestion(int questionNumber) {
+    private static void addAnswerToMultiQuestion(int questionNumber) {//delete
         MultiQuestion tmp = (MultiQuestion) dataBase.getQuestion(questionNumber);
         boolean isCorrect;
         printAllAnswersInDatabase();
@@ -345,6 +345,8 @@ public class Program {
         }
     }
 
+
+
     private static void addAnswerToOpenQuestion(int questionNumber) {
         OpenQuestion tmp = (OpenQuestion) dataBase.getQuestion(questionNumber);
         if (tmp.getOpenAnswer() != null) {
@@ -366,8 +368,8 @@ public class Program {
         System.out.println("Answer added successfully!");
     }
 
-    public static void addAnswerToQuestion() {
-        Sql_functions.printQuestionsAndAnswers();
+    public static void addAnswerToQuestion(Connection conn) {
+        Sql_functions.printQuestionsAndAnswers(conn);
         System.out.println("Enter the question number you want to add the answer to: ");
         int questionNumber = getIntegerFromUser() - 1;
         if (questionNumber < 0 || questionNumber >= dataBase.getNumOfQuestions()) {
@@ -380,13 +382,32 @@ public class Program {
             addAnswerToOpenQuestion(questionNumber);
     }
 
-    public static void addAnswerToQuestionSQL() {
-        Connection conn= Sql_functions.getConnection();
-        Sql_functions.printQuestionsAndAnswers();
-        System.out.println("Enter the question ID number you want to add the answer to: ");
-        int questionNumber = getIntegerFromUser();
+    public static void addAnswerToQuestionSQL(Connection conn) {
+        boolean flag= false;
+        int questionNumber=-1,answerNumber = -1;
+        Sql_functions.printQuestionsAndAnswers(conn);
+        while (!flag) {//checks for valid Q_ID
+            System.out.println("Enter the question ID number you want to add the answer to: ");
+            questionNumber = getIntegerFromUser();
+            flag=Sql_functions.questionIdExists(conn, questionNumber);
+        }
+        flag=false;
+        Sql_functions.printAllAnswers(conn);
+        while(!flag) {//checks for vaild answer id
+            System.out.println("choose an answer ID to add/replace");
+            answerNumber = getIntegerFromUser();
+            flag= Sql_functions.answerIdExists(conn,answerNumber);
+        }
 
-
+         String type = Sql_functions.getQuestionType(conn,questionNumber);
+        if(type=="multy"){//adds another answer to the question
+            System.out.println("is the answer correct?: true/false");
+            boolean iscorrect = sc.nextBoolean();
+            Sql_functions.addAnswerToMultipleQuestion(conn,questionNumber,answerNumber,iscorrect);
+        }
+        else{//it is an open question
+            Sql_functions.addAnswerToOpenQuestion(conn, questionNumber,answerNumber);
+        }
     }
 
 
@@ -405,12 +426,10 @@ public class Program {
     }
 
 
-    public static void addAnswerSQL(){
+    public static void addAnswerSQL(Connection conn){
 
         System.out.println("Enter the answer: ");
         String answerText = getStringFromUser();
-
-        Connection conn= Sql_functions.getConnection();
         String sql = "INSERT INTO answer (answertext) VALUES (?) RETURNING ans_id";
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -426,40 +445,34 @@ public class Program {
             System.out.println("Failed to add answer: " + e.getMessage());
         }
 
-        Sql_functions.closeConnection(conn);//closes the connection
+
 
     }
 
-    public static void addQuestionSQL() {
+    public static void addQuestionSQL(Connection conn) {
         System.out.println("Enter the question text:");
         String questionText = getStringFromUser();
 
-        System.out.println("Choose the difficulty (easy, medium, hard):");
-        String difficulty = getValidDifficulty();
+        Difficulty difficulty = getValidDifficulty();
+        QuestionType questionType = getValidQuestionType();
 
-        System.out.println("Choose the question type (open or multi):");
-        String questionType = getValidQuestionType();
-
-        Connection conn = Sql_functions.getConnection();
-        String sql = "INSERT INTO question (question_text, difficulty, question_type) VALUES (?, ?, ?) RETURNING question_id";
+        String sql = "INSERT INTO question (q_text, difficulty, qtype) VALUES (?, ?::difficulty_level, ?::question_type) RETURNING q_id";
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, questionText);
-            pstmt.setString(2, difficulty);
-            pstmt.setString(3, questionType);
+            pstmt.setString(2, difficulty.name().toUpperCase());
+            pstmt.setString(3, questionType.name().toUpperCase());
             ResultSet rs = pstmt.executeQuery();
 
             if (rs.next()) {
                 int questionID = rs.getInt(1);
                 System.out.println("Question added with ID: " + questionID);
             }
-            rs.close();
         } catch (SQLException e) {
             System.out.println("Failed to add question: " + e.getMessage());
-        } finally {
-            Sql_functions.closeConnection(conn);
         }
     }
+
 
 
 
@@ -487,20 +500,20 @@ public class Program {
     }
 
     public static void main(String[] args) throws IOException {
-        System.out.println("Enter your user ID: ");
-        int userId = getIntegerFromUser();
-        User user = userManager.getUserById(userId);
-
-        if (user == null) {
-            System.out.println("User not found. Would you like to create a new user? (yes/no)");
-            String response = getStringFromUser();
-            if (response.equalsIgnoreCase("yes")) {
-                addUser();
-                user = userManager.getUserById(userId);
-            } else {
-                return;
-            }
-        }
+//        System.out.println("Enter your user ID: ");
+//        int userId = getIntegerFromUser();
+//        User user = userManager.getUserById(userId);
+//
+//        if (user == null) {
+//            System.out.println("User not found. Would you like to create a new user? (yes/no)");
+//            String response = getStringFromUser();
+//            if (response.equalsIgnoreCase("yes")) {
+//                addUser();
+//                user = userManager.getUserById(userId);
+//            } else {
+//                return;
+//            }
+//        }
         String filePath = selectDatabase();
         int choice;
         boolean flag = true;
@@ -510,6 +523,7 @@ public class Program {
                         "| Welcome to Questions And Answers System |\n" +
                         "|                                         |\n" +
                         "-------------------------------------------");
+        Connection conn= Sql_functions.getConnection();//add checks for good connection
         do {
 
             enterCToContinue();
@@ -517,10 +531,10 @@ public class Program {
             choice = getIntegerFromUser();
             switch (choice) {
                 case -1 -> flag = false;
-                case 1 -> Sql_functions.printQuestionsAndAnswers();//V
-                case 2 -> addAnswerSQL();//V
-                case 3 -> addAnswerToQuestion();
-                case 4 -> addQuestion();
+                case 1 -> Sql_functions.printQuestionsAndAnswers(conn);//V
+                case 2 -> addAnswerSQL(conn);//V
+                case 3 -> addAnswerToQuestion(conn);
+                case 4 -> addQuestionSQL(conn);
                 case 5 -> deleteAnswerToQuestion();
                 case 6 -> deleteQuestion();
                 case 7 -> createExam();
@@ -529,6 +543,7 @@ public class Program {
                 default -> System.out.println("Invalid choice");
             }
         } while (flag);
+        Sql_functions.closeConnection(conn);
         System.out.println("Exiting the program...");
         ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(filePath));
         out.writeObject(dataBase);
@@ -650,23 +665,62 @@ public class Program {
         return sc.nextLine();
     }
 
-    private static String getValidDifficulty() {
+    private static Difficulty getValidDifficulty() {
         Scanner scanner = new Scanner(System.in);
-        String difficulty = scanner.nextLine().trim().toLowerCase();
-        while (!difficulty.equals("easy") && !difficulty.equals("medium") && !difficulty.equals("hard")) {
-            System.out.println("Invalid input. Please choose 'easy', 'medium', or 'hard':");
-            difficulty = scanner.nextLine().trim().toLowerCase();
+        System.out.println("Choose the difficulty (EASY, MEDIUM, HARD):");
+        String input = scanner.nextLine().trim().toUpperCase();
+
+        Difficulty difficulty = Difficulty.getValidDifficulty(input);
+        while (difficulty == null) {
+            System.out.println("Invalid input. Please choose 'EASY', 'MEDIUM', or 'HARD':");
+            input = scanner.nextLine().trim().toUpperCase();
+            difficulty = Difficulty.getValidDifficulty(input);
         }
         return difficulty;
     }
 
-    private static String getValidQuestionType() {
+
+    private static QuestionType getValidQuestionType() {
         Scanner scanner = new Scanner(System.in);
-        String type = scanner.nextLine().trim().toLowerCase();
-        while (!type.equals("open") && !type.equals("multi")) {
-            System.out.println("Invalid input. Please choose 'open' or 'multi':");
-            type = scanner.nextLine().trim().toLowerCase();
+        System.out.println("Choose the question type (OPEN or MULTI):");
+        String input = scanner.nextLine().trim().toUpperCase();
+
+        QuestionType questionType = QuestionType.getValidQuestionType(input);
+        while (questionType == null) {
+            System.out.println("Invalid input. Please choose 'OPEN' or 'MULTI':");
+            input = scanner.nextLine().trim().toUpperCase();
+            questionType = QuestionType.getValidQuestionType(input);
         }
-        return type;
+        return questionType;
     }
+
+
+    public enum Difficulty {
+        EASY, MEDIUM, HARD;
+
+        // Method to get a valid difficulty from a string
+        public static Difficulty getValidDifficulty(String input) {
+            for (Difficulty d : Difficulty.values()) {
+                if (d.name().equalsIgnoreCase(input)) {
+                    return d;
+                }
+            }
+            return null;  // or throw an exception
+        }
+    }
+
+    public enum QuestionType {
+        OPEN, MULTI;
+
+        // Method to get a valid question type from a string
+        public static QuestionType getValidQuestionType(String input) {
+            for (QuestionType qt : QuestionType.values()) {
+                if (qt.name().equalsIgnoreCase(input)) {
+                    return qt;
+                }
+            }
+            return null;  // or throw an exception
+        }
+    }
+
 }
