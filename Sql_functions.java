@@ -83,7 +83,7 @@ public class Sql_functions {
 
 
     public static boolean questionIdExists(Connection conn, int questionId) {
-        String sql = "SELECT 1 FROM Question WHERE q_id = ?";
+        String sql = "SELECT 1 FROM question WHERE q_id = ?";
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, questionId);
@@ -96,7 +96,7 @@ public class Sql_functions {
     }
 
     public static boolean answerIdExists(Connection conn, int ansId){
-        String sql = "SELECT 1 FROM Answer WHERE ans_id = ?";
+        String sql = "SELECT 1 FROM answer WHERE ans_id = ?";
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, ansId);
@@ -110,15 +110,15 @@ public class Sql_functions {
 
 
     public static void printAllAnswers(Connection conn) {
-        String sql = "SELECT ans_id, answertext FROM Answer ORDER BY answerID";
+        String sql = "SELECT ans_id, answertext FROM Answer ORDER BY ans_id";
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql);
              ResultSet rs = pstmt.executeQuery()) {
 
             System.out.println("All Answers in the Database:");
             while (rs.next()) {
-                int answerId = rs.getInt("answerID");
-                String answerString = rs.getString("answerString");
+                int answerId = rs.getInt("ans_id");
+                String answerString = rs.getString("answertext");
                 System.out.println("ID: " + answerId + " - Answer: " + answerString);
             }
         } catch (SQLException e) {
@@ -133,7 +133,7 @@ public class Sql_functions {
             ResultSet rs = pstmt.executeQuery();
 
             if (rs.next()) {
-                return rs.getString("questionType");  // Retrieve and return the question type
+                return rs.getString("qtype");  // Retrieve and return the question type
             } else {
                 System.out.println("No question found with ID: " + questionId);
             }
@@ -144,7 +144,8 @@ public class Sql_functions {
     }
 
     public static void addAnswerToMultipleQuestion(Connection conn, int questionId, int answerId, boolean isCorrect) {
-        String sql = "INSERT INTO QandA (qId, ansId, isCorrect) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO QandA (q_id, ans_id, iscorrect) VALUES (?, ?, ?) " +
+                "ON CONFLICT (q_id, ans_id) DO UPDATE SET iscorrect = EXCLUDED.iscorrect";
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, questionId);
@@ -152,17 +153,19 @@ public class Sql_functions {
             pstmt.setBoolean(3, isCorrect);
             int affectedRows = pstmt.executeUpdate();
             if (affectedRows > 0) {
-                System.out.println("Answer linked to question successfully.");
+                System.out.println("Answer linked to question successfully or updated existing link.");
             } else {
-                System.out.println("No rows affected.");
+                System.out.println("No rows affected, data unchanged.");
             }
         } catch (SQLException e) {
             System.out.println("Error linking answer to question: " + e.getMessage());
         }
     }
 
-        public static void addAnswerToOpenQuestion (Connection conn,int questionId, int newAnswerId){
-            String sql = "UPDATE QandA SET ansId = ? WHERE qId = ?";
+
+
+    public static void addAnswerToOpenQuestion (Connection conn,int questionId, int newAnswerId){
+            String sql = "UPDATE qANDa SET ans_id = ? WHERE q_id = ?";
 
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 pstmt.setInt(1, newAnswerId);

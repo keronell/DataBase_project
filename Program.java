@@ -533,7 +533,7 @@ public class Program {
                 case -1 -> flag = false;
                 case 1 -> Sql_functions.printQuestionsAndAnswers(conn);//V
                 case 2 -> addAnswerSQL(conn);//V
-                case 3 -> addAnswerToQuestion(conn);
+                case 3 -> addAnswerToQuestionSQL(conn);
                 case 4 -> addQuestionSQL(conn);
                 case 5 -> deleteAnswerToQuestion();
                 case 6 -> deleteQuestion();
@@ -670,14 +670,15 @@ public class Program {
         System.out.println("Choose the difficulty (EASY, MEDIUM, HARD):");
         String input = scanner.nextLine().trim().toUpperCase();
 
-        Difficulty difficulty = Difficulty.getValidDifficulty(input);
+        Difficulty difficulty = Difficulty.fromString(input); // Correct method call to parse the string
         while (difficulty == null) {
             System.out.println("Invalid input. Please choose 'EASY', 'MEDIUM', or 'HARD':");
             input = scanner.nextLine().trim().toUpperCase();
-            difficulty = Difficulty.getValidDifficulty(input);
+            difficulty = Difficulty.fromString(input); // Correct method call to parse the string
         }
         return difficulty;
     }
+
 
 
     private static QuestionType getValidQuestionType() {
@@ -685,42 +686,62 @@ public class Program {
         System.out.println("Choose the question type (OPEN or MULTI):");
         String input = scanner.nextLine().trim().toUpperCase();
 
-        QuestionType questionType = QuestionType.getValidQuestionType(input);
+        QuestionType questionType = QuestionType.fromString(input);
         while (questionType == null) {
             System.out.println("Invalid input. Please choose 'OPEN' or 'MULTI':");
             input = scanner.nextLine().trim().toUpperCase();
-            questionType = QuestionType.getValidQuestionType(input);
+            questionType = QuestionType.fromString(input);
         }
         return questionType;
     }
 
 
+
     public enum Difficulty {
         EASY, MEDIUM, HARD;
 
-        // Method to get a valid difficulty from a string
-        public static Difficulty getValidDifficulty(String input) {
-            for (Difficulty d : Difficulty.values()) {
-                if (d.name().equalsIgnoreCase(input)) {
-                    return d;
+        public static Difficulty fromString(String input) {
+            for (Difficulty level : values()) {
+                if (level.name().equalsIgnoreCase(input)) {
+                    return level;
                 }
             }
-            return null;  // or throw an exception
+            return null; // Return null if no match is found
         }
     }
+
 
     public enum QuestionType {
         OPEN, MULTI;
 
-        // Method to get a valid question type from a string
-        public static QuestionType getValidQuestionType(String input) {
-            for (QuestionType qt : QuestionType.values()) {
-                if (qt.name().equalsIgnoreCase(input)) {
-                    return qt;
+        public static QuestionType fromString(String str) {
+            for (QuestionType type : QuestionType.values()) {
+                if (type.name().equalsIgnoreCase(str)) {
+                    return type;
                 }
             }
-            return null;  // or throw an exception
+            throw new IllegalArgumentException("No enum constant " + QuestionType.class.getCanonicalName() + "." + str);
         }
+    }
+    public static QuestionType getQuestionType(Connection conn, int questionId) {
+        String sql = "SELECT qtype FROM Question WHERE q_id = ?";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, questionId);  // Set the question ID parameter
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                String typeStr = rs.getString("qtype");  // Retrieve the question type as a string
+                return QuestionType.fromString(typeStr);  // Convert the string to an enum and return
+            } else {
+                System.out.println("No question found with ID: " + questionId);
+            }
+        } catch (SQLException e) {
+            System.out.println("Error retrieving question type: " + e.getMessage());
+        } catch (IllegalArgumentException e) {
+            System.out.println("Error mapping string to enum: " + e.getMessage());
+        }
+        return null;  // Return null if no question is found, an error occurs, or mapping fails
     }
 
 }
