@@ -1,4 +1,4 @@
-import daniel_grigoriev.interfaces.Examable;
+import interfaces.Examable;
 
 import java.io.File;
 import java.io.IOException;

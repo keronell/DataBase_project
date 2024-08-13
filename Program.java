@@ -1,6 +1,6 @@
-import daniel_grigoriev.exceptions.ExamException;
-import daniel_grigoriev.exceptions.MultiQuestionException;
-import daniel_grigoriev.interfaces.Examable;
+import exceptions.ExamException;
+import exceptions.MultiQuestionException;
+import interfaces.Examable;
 
 import java.io.*;
 import java.util.Scanner;
