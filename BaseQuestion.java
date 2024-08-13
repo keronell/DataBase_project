@@ -1,10 +1,5 @@
 import java.io.Serializable;
 
-/**
- * @author Daniel Grigoriev
- * @version 1.2
- */
-
 public abstract class BaseQuestion implements Serializable {
 
 

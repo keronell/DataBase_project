@@ -1,7 +1,4 @@
-/**
- * @author Daniel Grigoriev
- * @version 1.2
- */
+
 public class OpenQuestion extends BaseQuestion {
     private Answer openAnswer;
 

@@ -1,10 +1,6 @@
 import java.io.Serializable;
 import java.util.Arrays;
 
-/**
- * @author Daniel Grigoriev
- * @version 1.2
- */
 public class DataBase implements Serializable {
     private BaseQuestion[] questions;
     private Answer[] answers;

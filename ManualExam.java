@@ -6,12 +6,13 @@ import java.io.PrintWriter;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-/**
- * @author Daniel Grigoriev
- * @version 1.2
- */
 public class ManualExam implements Examable {
     private DataBase examDataBase;
+    private int identifier;
+
+    public ManualExam() {
+        this.identifier = ExamIDGenerator.generateID();
+    }
 
     @Override
     public String CreateExam(Object database) {

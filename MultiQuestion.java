@@ -1,7 +1,4 @@
-/**
- * @author Daniel Grigoriev
- * @version 1.2
- */
+
 public class MultiQuestion extends BaseQuestion {
     private final int MAX_ANSWERS = 10;
     private final Answer[] answers;

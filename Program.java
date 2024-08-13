@@ -3,13 +3,19 @@ import exceptions.MultiQuestionException;
 import interfaces.Examable;
 
 import java.io.*;
+import java.sql.*;
+
+import java.util.List;
 import java.util.Scanner;
 
 /**
- * @author Daniel Grigoriev
+ * @author Raz Natanzon
+ * Roi Dor
+ * Vladislav Pavlyuk
  * @version 1.2
  */
 public class Program {
+    static UserManager userManager = new UserManager(); // Create a static instance of UserManager
     public static Scanner sc = new Scanner(System.in);
     public static DataBase dataBase = new DataBase();
 
@@ -361,7 +367,7 @@ public class Program {
     }
 
     public static void addAnswerToQuestion() {
-        printAllQuestionsWithAnswers();
+        Sql_functions.printQuestionsAndAnswers();
         System.out.println("Enter the question number you want to add the answer to: ");
         int questionNumber = getIntegerFromUser() - 1;
         if (questionNumber < 0 || questionNumber >= dataBase.getNumOfQuestions()) {
@@ -374,7 +380,17 @@ public class Program {
             addAnswerToOpenQuestion(questionNumber);
     }
 
-    public static Answer addAnswer() {
+    public static void addAnswerToQuestionSQL() {
+        Connection conn= Sql_functions.getConnection();
+        Sql_functions.printQuestionsAndAnswers();
+        System.out.println("Enter the question ID number you want to add the answer to: ");
+        int questionNumber = getIntegerFromUser();
+
+
+    }
+
+
+    public static Answer addAnswer() {/////to delete
         System.out.println("Enter the answer: ");
         String answer = getStringFromUser();
         int isExist = dataBase.doesAnswerExist(answer);
@@ -388,6 +404,65 @@ public class Program {
         return dataBase.getAnswer(dataBase.getNumOfAnswers() - 1);
     }
 
+
+    public static void addAnswerSQL(){
+
+        System.out.println("Enter the answer: ");
+        String answerText = getStringFromUser();
+
+        Connection conn= Sql_functions.getConnection();
+        String sql = "INSERT INTO answer (answertext) VALUES (?) RETURNING ans_id";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, answerText);  // Set the text of the answer in the query
+            ResultSet rs = pstmt.executeQuery();  // Execute the query and get the generated keys
+
+            // Check if an answer ID was returned and return it
+            if (rs.next()) {
+                int answerID = rs.getInt(1);
+                System.out.println("Answer added with ID: " + answerID);
+            }
+        } catch (SQLException e) {
+            System.out.println("Failed to add answer: " + e.getMessage());
+        }
+
+        Sql_functions.closeConnection(conn);//closes the connection
+
+    }
+
+    public static void addQuestionSQL() {
+        System.out.println("Enter the question text:");
+        String questionText = getStringFromUser();
+
+        System.out.println("Choose the difficulty (easy, medium, hard):");
+        String difficulty = getValidDifficulty();
+
+        System.out.println("Choose the question type (open or multi):");
+        String questionType = getValidQuestionType();
+
+        Connection conn = Sql_functions.getConnection();
+        String sql = "INSERT INTO question (question_text, difficulty, question_type) VALUES (?, ?, ?) RETURNING question_id";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, questionText);
+            pstmt.setString(2, difficulty);
+            pstmt.setString(3, questionType);
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                int questionID = rs.getInt(1);
+                System.out.println("Question added with ID: " + questionID);
+            }
+            rs.close();
+        } catch (SQLException e) {
+            System.out.println("Failed to add question: " + e.getMessage());
+        } finally {
+            Sql_functions.closeConnection(conn);
+        }
+    }
+
+
+
     public static void printAllQuestionsWithAnswers() {
         if (dataBase.getNumOfQuestions() == 0)
             System.out.println("No questions found!");
@@ -398,6 +473,7 @@ public class Program {
                 System.out.println((i + 1) + ".{ID:" + dataBase.getQuestion(i).getIdentifier() + " , Difficulty:" + dataBase.getQuestion(i).getDifficulty() + "}\n" + dataBase.getQuestion(i).toStringWithAnswer());
         }
     }
+
 
     public static void printAllAnswersInDatabase() {
         if (dataBase.getNumOfAnswers() == 0)
@@ -411,6 +487,20 @@ public class Program {
     }
 
     public static void main(String[] args) throws IOException {
+        System.out.println("Enter your user ID: ");
+        int userId = getIntegerFromUser();
+        User user = userManager.getUserById(userId);
+
+        if (user == null) {
+            System.out.println("User not found. Would you like to create a new user? (yes/no)");
+            String response = getStringFromUser();
+            if (response.equalsIgnoreCase("yes")) {
+                addUser();
+                user = userManager.getUserById(userId);
+            } else {
+                return;
+            }
+        }
         String filePath = selectDatabase();
         int choice;
         boolean flag = true;
@@ -421,18 +511,21 @@ public class Program {
                         "|                                         |\n" +
                         "-------------------------------------------");
         do {
+
             enterCToContinue();
             menu();
             choice = getIntegerFromUser();
             switch (choice) {
                 case -1 -> flag = false;
-                case 1 -> printAllQuestionsWithAnswers();
-                case 2 -> addAnswer();
+                case 1 -> Sql_functions.printQuestionsAndAnswers();//V
+                case 2 -> addAnswerSQL();//V
                 case 3 -> addAnswerToQuestion();
                 case 4 -> addQuestion();
                 case 5 -> deleteAnswerToQuestion();
                 case 6 -> deleteQuestion();
                 case 7 -> createExam();
+                case 8 -> addUser();
+                case 9 -> deleteUser();
                 default -> System.out.println("Invalid choice");
             }
         } while (flag);
@@ -444,8 +537,10 @@ public class Program {
         System.out.println(
                 "-------------------------------------------\n" +
                         "|               Goodbye !                 |\n" +
-                        "|      Written by : Daniel Grigoriev      |\n" +
-                        "|                @2023                    |\n" +
+                        "|      Written by : Raz Natanzon          |\n" +
+                        "|                   Roi Dor               |\n" +
+                        "|                Vladislav Pavlyuk        |\n" +
+                        "|                @2024                    |\n" +
                         "-------------------------------------------");
         sc.close();
     }
@@ -458,8 +553,40 @@ public class Program {
         System.out.println("5. Delete an Answer to a question");
         System.out.println("6. Delete a question (with all the answers)");
         System.out.println("7. Create Exam");
+        System.out.println("8. Add User");
+        System.out.println("9. Delete User");
         System.out.println("-1. Exit");
     }
+
+    private static void deleteUser() {
+        System.out.println("Enter the ID of the user you want to delete: ");
+        printAllUsers();
+        int id = getIntegerFromUser();
+        userManager.deleteUser(id);
+        System.out.println("User deleted successfully");
+    }
+
+    private static void printAllUsers() {
+        List<User> users = userManager.getUsers();
+        for (User user : users) {
+            System.out.println("ID: " + user.getId() + " Username: " + user.getUsername() + " Type: " + user.getType());
+        }
+    }
+
+    private static void addUser() {
+        System.out.println("Enter the username: ");
+        String username = getStringFromUser();
+        System.out.println("Enter the type of the user: ");
+        System.out.println("1 - Admin\n2 - Teacher");
+        int choice = getIntegerFromUser();
+        while (choice < 1 || choice > 2) {
+            System.out.println("Invalid choice, please try again");
+            choice = getIntegerFromUser();
+        }
+        userManager.addUser(new User(username, choice == 1 ? User.UserType.ADMIN : User.UserType.TEACHER));
+        System.out.println("User added successfully");
+    }
+
 
     private static String selectDatabase() {
         File folder = new File("Databases");
@@ -523,4 +650,23 @@ public class Program {
         return sc.nextLine();
     }
 
+    private static String getValidDifficulty() {
+        Scanner scanner = new Scanner(System.in);
+        String difficulty = scanner.nextLine().trim().toLowerCase();
+        while (!difficulty.equals("easy") && !difficulty.equals("medium") && !difficulty.equals("hard")) {
+            System.out.println("Invalid input. Please choose 'easy', 'medium', or 'hard':");
+            difficulty = scanner.nextLine().trim().toLowerCase();
+        }
+        return difficulty;
+    }
+
+    private static String getValidQuestionType() {
+        Scanner scanner = new Scanner(System.in);
+        String type = scanner.nextLine().trim().toLowerCase();
+        while (!type.equals("open") && !type.equals("multi")) {
+            System.out.println("Invalid input. Please choose 'open' or 'multi':");
+            type = scanner.nextLine().trim().toLowerCase();
+        }
+        return type;
+    }
 }

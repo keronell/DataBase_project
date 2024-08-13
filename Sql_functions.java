@@ -1,6 +1,4 @@
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
+import java.sql.*;
 
 public class Sql_functions {
     private static final String URL = "jdbc:postgresql://localhost:5432/exam_creator_project";
@@ -39,11 +37,43 @@ public class Sql_functions {
         }
     }
 
-    public static void loadQuestionsAndAnswers(Connection connection) {
-        // Implement the logic to load questions and answers from the database
-        // This method should be called after successfully connecting to the database
-        // The loaded data should be stored in the appropriate data structures
+
+    public static void printQuestionsAndAnswers() {
+        Connection conn = getConnection();
+        String sql = "SELECT q.q_id, q.Q_text, q.difficulty, q.qtype as type, a.ans_id, a.answerText, qa.isCorrect " +
+                "FROM Question q " +
+                "JOIN QandA qa ON q.q_id = qa.q_id " +
+                "JOIN Answer a ON qa.\"ans_id\" = a.ans_id " +
+                "ORDER BY q.q_id, a.ans_id";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+
+            int lastQId = -1; // Variable to track the last question ID processed
+            while (rs.next()) {
+                int qid = rs.getInt("q_id");
+                String qtext = rs.getString("Q_text");
+                String difficulty = rs.getString("difficulty");
+                String type = rs.getString("type");
+                int aid = rs.getInt("ans_id");
+                String atext = rs.getString("answerText");
+                boolean correct = rs.getBoolean("isCorrect");
+
+                // Check if the current question ID is different from the last processed
+                if (qid != lastQId) {
+                    // Print the question text with difficulty and type if it's a new question
+                    System.out.println("\n" + qid + ". - " + qtext + " (" + difficulty + ") [" + type + "]");
+                    lastQId = qid; // Update the last question ID
+                }
+                // Print the answer details with a letter prefix
+                System.out.println("\t" + (char)('a' + aid - 1) + ") " + atext + (correct ? " (Correct)" : ""));
+            }
+        } catch (SQLException e) {
+            System.out.println("Error fetching questions and answers: " + e.getMessage());
+        }
+        closeConnection(conn);
     }
+
 
 }
 

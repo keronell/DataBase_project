@@ -7,17 +7,15 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Random;
 
-/**
- * @author Daniel Grigoriev
- * @version 1.2
- */
 
 public class AutomaticExam implements Examable {
     private final int numOfQuestionsToGenerate;
     private DataBase allDatabase;
     private DataBase examDatabase;
+    private int identifier;
 
     public AutomaticExam(int numOfQuestionsToGenerate) {
+        this.identifier = ExamIDGenerator.generateID();
         this.numOfQuestionsToGenerate = numOfQuestionsToGenerate;
     }
 
