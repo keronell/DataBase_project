@@ -19,6 +19,7 @@ public class Program {
     public static Scanner sc = new Scanner(System.in);
     public static DataBase dataBase = new DataBase();
 
+
     private static boolean isInArray(int[] track, int number) {
         if (number < 0) // negative numbers can't be as indexes
             return false;
@@ -178,42 +179,54 @@ public class Program {
         }
     }
 
-    public static void createExam() {
+    public static void createExam(Connection conn) {
         System.out.println("-------------------------------------------");
         System.out.println("|                                         |");
         System.out.println("|            Exam Creator Tool            |");
         System.out.println("|                                         |");
         System.out.println("-------------------------------------------");
-
+        DataBase DB = new DataBase();
+        // List all id to user and choose question for the exam by ID
+        // while user want to add run next line
+        boolean flag = true;
+        while(flag)
+        {
+            Sql_functions.printQuestionsAndAnswers(conn);
+            System.out.println("Enter the question ID you want to add to the exam: ");
+            int q_id = getIntegerFromUser();
+            Sql_functions.getQuestionByID(conn,DB,q_id);
+            System.out.println("Do you want to add another question? (true/false)");
+            flag = getBooleanFromUser();
+        }
         boolean isVaildInput = false;
         int amountOfQuestions = 0;
         // check all the prerequisites for creating an exam, prompts the user to enter the amount of questions he wants in the exam (excluding maximum of 10 questions)
-        while (!isVaildInput) {
-            try {
-                if (dataBase.getNumOfAnswers() < 4)
-                    throw new MultiQuestionException("There are not enough answers in the database to create a \"Multiple Choice Question\" with 4 answers");
-                if (dataBase.getNumOfQuestions() == 0)
-                    throw new ExamException("There are no questions in the database");
-
-                System.out.print("Enter the amount of questions you want to have in the exam: ");
-
-                amountOfQuestions = getIntegerFromUser();
-                if (amountOfQuestions <= 0)
-                    throw new ExamException("You can't have an exam with " + amountOfQuestions + " questions");
-                if (amountOfQuestions > 10)
-                    throw new ExamException();
-                if (amountOfQuestions > dataBase.getNumOfQuestions())
-                    throw new ExamException("There are only " + dataBase.getNumOfQuestions() + " questions in the database you can't have an exam with " + amountOfQuestions + " questions");
-                isVaildInput = true;
-            } catch (ExamException e) {
-                System.out.println("Exam Error: " + e.getMessage());
-                if (dataBase.getNumOfQuestions() == 0)
-                    return;
-            } catch (MultiQuestionException e) {
-                System.out.println("Multi-Question Error: " + e.getMessage());
-                return;
-            }
-        }
+//        while (!isVaildInput) {
+//            try {
+//                if (dataBase.getNumOfAnswers() < 4)
+//                    throw new MultiQuestionException("There are not enough answers in the database to create a \"Multiple Choice Question\" with 4 answers");
+//                if (dataBase.getNumOfQuestions() == 0)
+//                    throw new ExamException("There are no questions in the database");
+//
+//                System.out.print("Enter the amount of questions you want to have in the exam: ");
+//
+//                amountOfQuestions = getIntegerFromUser();
+//                if (amountOfQuestions <= 0)
+//                    throw new ExamException("You can't have an exam with " + amountOfQuestions + " questions");
+//                if (amountOfQuestions > 10)
+//                    throw new ExamException();
+//                if (amountOfQuestions > dataBase.getNumOfQuestions())
+//                    throw new ExamException("There are only " + dataBase.getNumOfQuestions() + " questions in the database you can't have an exam with " + amountOfQuestions + " questions");
+//                isVaildInput = true;
+//            } catch (ExamException e) {
+//                System.out.println("Exam Error: " + e.getMessage());
+//                if (dataBase.getNumOfQuestions() == 0)
+//                    return;
+//            } catch (MultiQuestionException e) {
+//                System.out.println("Multi-Question Error: " + e.getMessage());
+//                return;
+//            }
+//        }
 
         Examable exam = null;
         DataBase dataBaseForExam = null;
@@ -382,25 +395,9 @@ public class Program {
             addAnswerToOpenQuestion(questionNumber);
     }
 
-    public static void addAnswerToQuestionSQL(Connection conn) {
-        boolean flag= false;
-        int questionNumber=-1,answerNumber = -1;
-        Sql_functions.printQuestionsAndAnswers(conn);
-        while (!flag) {//checks for valid Q_ID
-            System.out.println("Enter the question ID number you want to add the answer to: ");
-            questionNumber = getIntegerFromUser();
-            flag=Sql_functions.questionIdExists(conn, questionNumber);
-        }
-        flag=false;
-        Sql_functions.printAllAnswers(conn);
-        while(!flag) {//checks for vaild answer id
-            System.out.println("choose an answer ID to add/replace");
-            answerNumber = getIntegerFromUser();
-            flag= Sql_functions.answerIdExists(conn,answerNumber);
-        }
-
-         String type = Sql_functions.getQuestionType(conn,questionNumber);
-        if(type=="multy"){//adds another answer to the question
+    public static void addAnswerToQuestionSQL(Connection conn,int questionNumber,int answerNumber) {
+        String type = Sql_functions.getQuestionType(conn,questionNumber);
+        if(type.equalsIgnoreCase("multi")){//adds another answer to the question
             System.out.println("is the answer correct?: true/false");
             boolean iscorrect = sc.nextBoolean();
             Sql_functions.addAnswerToMultipleQuestion(conn,questionNumber,answerNumber,iscorrect);
@@ -500,21 +497,20 @@ public class Program {
     }
 
     public static void main(String[] args) throws IOException {
-//        System.out.println("Enter your user ID: ");
-//        int userId = getIntegerFromUser();
-//        User user = userManager.getUserById(userId);
-//
-//        if (user == null) {
-//            System.out.println("User not found. Would you like to create a new user? (yes/no)");
-//            String response = getStringFromUser();
-//            if (response.equalsIgnoreCase("yes")) {
-//                addUser();
-//                user = userManager.getUserById(userId);
-//            } else {
-//                return;
-//            }
+        Connection conn= Sql_functions.getConnection();
+//        System.out.println("Choose user: (Write user ID)");
+//        loadUsers(conn);
+//        int i = 0;
+//        for(User user: userManager.getUsers()){
+//            System.out.println(user);
 //        }
-        String filePath = selectDatabase();
+//        int userId = getIntegerFromUser();
+//
+//        User user = userManager.getUserById(userId);
+//        if(user == null){
+//            System.out.println("User not found");
+//            return;
+//        }
         int choice;
         boolean flag = true;
         System.out.println(
@@ -532,23 +528,63 @@ public class Program {
             switch (choice) {
                 case -1 -> flag = false;
                 case 1 -> Sql_functions.printQuestionsAndAnswers(conn);//V
-                case 2 -> addAnswerSQL(conn);//V
-                case 3 -> addAnswerToQuestionSQL(conn);
-                case 4 -> addQuestionSQL(conn);
-                case 5 -> deleteAnswerToQuestion();
-                case 6 -> deleteQuestion();
-                case 7 -> createExam();
-                case 8 -> addUser();
+                case 2 -> {
+                    System.out.println("Enter the answer: ");
+                    String answerText = getStringFromUser();
+                    addAnswerSQL(conn,answerText);//V
+                }
+                case 3 -> {
+                    boolean inputCheck= false;
+                    int questionNumber=-1,answerNumber = -1;
+                    Sql_functions.printQuestionsAndAnswers(conn);
+                    while (!inputCheck) {//checks for valid Q_ID
+                        System.out.println("Enter the question ID number you want to add the answer to: ");
+                        questionNumber = getIntegerFromUser();
+                        inputCheck=Sql_functions.questionIdExists(conn, questionNumber);
+                    }
+                    inputCheck=false;
+                    Sql_functions.printAllAnswers(conn);
+                    while(!inputCheck) {//checks for vaild answer id
+                        System.out.println("choose an answer ID to add/replace");
+                        answerNumber = getIntegerFromUser();
+                        inputCheck= Sql_functions.answerIdExists(conn,answerNumber);
+                    }
+                    addAnswerToQuestionSQL(conn,questionNumber,answerNumber);//V
+                }
+                case 4 -> addQuestionSQL(conn);//V
+                case 5 -> {//V
+                    boolean indexCheck= false;
+                    int questionNumber=-1,answerNumber = -1;
+                    Sql_functions.printQuestionsAndAnswers(conn);
+                    while (!indexCheck) {//checks for valid Q_ID
+                        System.out.println("Enter the question ID number you want to delete the answer to: ");
+                        questionNumber = getIntegerFromUser();
+                        indexCheck=Sql_functions.questionIdExists(conn, questionNumber);
+                    }
+                    deleteAnswerToQuestionSQL(conn,questionNumber);
+                }
+                case 6 -> deleteQuestionSQL(conn);//V
+                case 7 -> {
+                    //create a database:
+
+
+
+                    //to take each question from the qANDa datatbase and add them to DB
+                    //to take each Answers from the qANDa datatbase and add them to DB
+                    //to create a way to turn questions(multi or open) to objects from the database!!
+                    createExam(conn);
+                }
+//                case 8 -> addUser();
                 case 9 -> deleteUser();
                 default -> System.out.println("Invalid choice");
             }
         } while (flag);
         Sql_functions.closeConnection(conn);
         System.out.println("Exiting the program...");
-        ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(filePath));
-        out.writeObject(dataBase);
-        out.writeInt(BaseQuestion.getCounter());
-        out.close();
+//        ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(filePath));
+//        out.writeObject(dataBase);
+//        out.writeInt(BaseQuestion.getCounter());
+//        out.close();
         System.out.println(
                 "-------------------------------------------\n" +
                         "|               Goodbye !                 |\n" +
@@ -588,19 +624,19 @@ public class Program {
         }
     }
 
-    private static void addUser() {
-        System.out.println("Enter the username: ");
-        String username = getStringFromUser();
-        System.out.println("Enter the type of the user: ");
-        System.out.println("1 - Admin\n2 - Teacher");
-        int choice = getIntegerFromUser();
-        while (choice < 1 || choice > 2) {
-            System.out.println("Invalid choice, please try again");
-            choice = getIntegerFromUser();
-        }
-        userManager.addUser(new User(username, choice == 1 ? User.UserType.ADMIN : User.UserType.TEACHER));
-        System.out.println("User added successfully");
-    }
+//    private static void addUser() {
+//        System.out.println("Enter the username: ");
+//        String username = getStringFromUser();
+//        System.out.println("Enter the type of the user: ");
+//        System.out.println("1 - Admin\n2 - Teacher");
+//        int choice = getIntegerFromUser();
+//        while (choice < 1 || choice > 2) {
+//            System.out.println("Invalid choice, please try again");
+//            choice = getIntegerFromUser();
+//        }
+//        userManager.addUser(new User(username, choice == 1 ? User.UserType.ADMIN : User.UserType.TEACHER));
+//        System.out.println("User added successfully");
+//    }
 
 
     private static String selectDatabase() {
@@ -743,5 +779,35 @@ public class Program {
         }
         return null;  // Return null if no question is found, an error occurs, or mapping fails
     }
+    public static void deleteQuestionSQL(Connection conn){
+        Sql_functions.printQuestionsAndAnswers(conn);
+        System.out.println("Enter the index of the question you want to delete:");
+        int questionNumber = getIntegerFromUser();
 
+        if(Sql_functions.deleteQuestion(conn, questionNumber)){
+            System.out.println("Question got deleted successfully");
+        }
+        else{
+            System.out.println("Question deletion failed");
+        }
+    }
+
+    public static void loadUsers(Connection conn) {
+        String sql = "SELECT * FROM users";
+
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            while (rs.next()) {
+                int id = rs.getInt("userid");
+                String username = rs.getString("username");
+                String type = rs.getString("type");
+
+                User.UserType userType = User.UserType.valueOf(type.toUpperCase());
+                userManager.addUser(new User(id, username, userType));
+            }
+        } catch (SQLException e) {
+            System.out.println("Failed to load users: " + e.getMessage());
+        }
+    }
 }

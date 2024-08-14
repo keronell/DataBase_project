@@ -1,7 +1,6 @@
 import java.util.List;
 public class User {
 
-        private static int counter = 0;
         private String username;
         private int identifier;
         private UserType type;
@@ -10,11 +9,10 @@ public class User {
             ADMIN, TEACHER
         }
 
-        public User(String username, UserType type) {
+        public User(int identifier,String username, UserType type){
             this.username = username;
             this.identifier = identifier;
             this.type = type;
-            identifier = ++counter;
         }
 
         public String getUsername() {
@@ -28,4 +26,10 @@ public class User {
         public UserType getType() {
             return type;
         }
+
+    @Override
+    public String toString() {
+        System.out.println("User: " + identifier + " " + username + " " + type);
+        return super.toString();
+    }
 }

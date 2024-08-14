@@ -36,9 +36,10 @@ public class Sql_functions {
     public static void printQuestionsAndAnswers(Connection conn) {
         String sql = "SELECT q.q_id, q.Q_text, q.difficulty, q.qtype as type, a.ans_id, a.answerText, qa.isCorrect " +
                 "FROM Question q " +
-                "JOIN QandA qa ON q.q_id = qa.q_id " +
-                "JOIN Answer a ON qa.ans_id = a.ans_id " +  // corrected column name for consistency
+                "LEFT JOIN QandA qa ON q.q_id = qa.q_id " + // Changed to LEFT JOIN to include questions without answers
+                "LEFT JOIN Answer a ON qa.ans_id = a.ans_id " +  // Changed to LEFT JOIN
                 "ORDER BY q.q_id, a.ans_id";
+
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql);
              ResultSet rs = pstmt.executeQuery()) {
@@ -67,7 +68,7 @@ public class Sql_functions {
                     answerPrefix = 'a'; // Reset the answer prefix for a new question
                 }
 
-                if ("open".equals(type)) {
+                if ("OPEN".equalsIgnoreCase(type)) {
                     // Print open question answer directly
                     System.out.println("\tAnswer: " + atext + (correct ? " (Correct)" : ""));
                 } else {
@@ -78,7 +79,7 @@ public class Sql_functions {
         } catch (SQLException e) {
             System.out.println("Error fetching questions and answers: " + e.getMessage());
         }
-
+        closeConnection(conn);
     }
 
 
@@ -126,6 +127,7 @@ public class Sql_functions {
         }
     }
     public static String getQuestionType(Connection conn, int questionId) {
+
         String sql = "SELECT qtype FROM Question WHERE q_id = ?";
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
