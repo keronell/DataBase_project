@@ -33,7 +33,11 @@ public class Sql_functions {
     }
 
 
-    public static void printQuestionsAndAnswers(Connection conn) {
+    public static void printQuestionsAndAnswers() {
+        Connection conn = getConnection();
+        if (conn == null) {
+            return;
+        }
         String sql = "SELECT q.q_id, q.Q_text, q.difficulty, q.qtype as type, a.ans_id, a.answerText, qa.isCorrect " +
                 "FROM Question q " +
                 "LEFT JOIN QandA qa ON q.q_id = qa.q_id " + // Changed to LEFT JOIN to include questions without answers

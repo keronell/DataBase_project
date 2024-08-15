@@ -180,6 +180,7 @@ public class Program {
     }
 
     public static void createExam(Connection conn) {
+        Sql_functions.closeConnection(conn);
         System.out.println("-------------------------------------------");
         System.out.println("|                                         |");
         System.out.println("|            Exam Creator Tool            |");
@@ -189,12 +190,13 @@ public class Program {
         // List all id to user and choose question for the exam by ID
         // while user want to add run next line
         boolean flag = true;
+
         while(flag)
         {
-            Sql_functions.printQuestionsAndAnswers(conn);
+            Sql_functions.printQuestionsAndAnswers();
             System.out.println("Enter the question ID you want to add to the exam: ");
             int q_id = getIntegerFromUser();
-            Sql_functions.getQuestionByID(conn,DB,q_id);
+            Sql_functions.getQuestionByID(DB,q_id);
             System.out.println("Do you want to add another question? (true/false)");
             flag = getBooleanFromUser();
         }
@@ -381,8 +383,8 @@ public class Program {
         System.out.println("Answer added successfully!");
     }
 
-    public static void addAnswerToQuestion(Connection conn) {
-        Sql_functions.printQuestionsAndAnswers(conn);
+    public static void addAnswerToQuestion() {
+        Sql_functions.printQuestionsAndAnswers();
         System.out.println("Enter the question number you want to add the answer to: ");
         int questionNumber = getIntegerFromUser() - 1;
         if (questionNumber < 0 || questionNumber >= dataBase.getNumOfQuestions()) {
@@ -527,7 +529,7 @@ public class Program {
             choice = getIntegerFromUser();
             switch (choice) {
                 case -1 -> flag = false;
-                case 1 -> Sql_functions.printQuestionsAndAnswers(conn);//V
+                case 1 -> Sql_functions.printQuestionsAndAnswers();//V
                 case 2 -> {
                     System.out.println("Enter the answer: ");
                     String answerText = getStringFromUser();
@@ -536,7 +538,7 @@ public class Program {
                 case 3 -> {
                     boolean inputCheck= false;
                     int questionNumber=-1,answerNumber = -1;
-                    Sql_functions.printQuestionsAndAnswers(conn);
+                    Sql_functions.printQuestionsAndAnswers();
                     while (!inputCheck) {//checks for valid Q_ID
                         System.out.println("Enter the question ID number you want to add the answer to: ");
                         questionNumber = getIntegerFromUser();
@@ -555,7 +557,7 @@ public class Program {
                 case 5 -> {//V
                     boolean indexCheck= false;
                     int questionNumber=-1,answerNumber = -1;
-                    Sql_functions.printQuestionsAndAnswers(conn);
+                    Sql_functions.printQuestionsAndAnswers();
                     while (!indexCheck) {//checks for valid Q_ID
                         System.out.println("Enter the question ID number you want to delete the answer to: ");
                         questionNumber = getIntegerFromUser();
@@ -780,7 +782,7 @@ public class Program {
         return null;  // Return null if no question is found, an error occurs, or mapping fails
     }
     public static void deleteQuestionSQL(Connection conn){
-        Sql_functions.printQuestionsAndAnswers(conn);
+        Sql_functions.printQuestionsAndAnswers();
         System.out.println("Enter the index of the question you want to delete:");
         int questionNumber = getIntegerFromUser();
 
