@@ -5,7 +5,6 @@ import interfaces.Examable;
 import java.io.*;
 import java.sql.*;
 
-import java.util.List;
 import java.util.Scanner;
 
 /**
@@ -202,7 +201,7 @@ public class Program {
         }
         boolean isVaildInput = false;
         int amountOfQuestions = 0;
-        // check all the prerequisites for creating an exam, prompts the user to enter the amount of questions he wants in the exam (excluding maximum of 10 questions)
+//         check all the prerequisites for creating an exam, prompts the user to enter the amount of questions he wants in the exam (excluding maximum of 10 questions)
 //        while (!isVaildInput) {
 //            try {
 //                if (dataBase.getNumOfAnswers() < 4)
@@ -303,40 +302,6 @@ public class Program {
             System.out.println("Deletion of answer failed");
     }
 
-    public static void addQuestion() {
-        System.out.println("Enter the question: ");
-        String question = getStringFromUser();
-        if (dataBase.doesQuestionExist(question)) {
-            System.out.printf("The question \"%s\" already exists in the database\n", question);
-            return;
-        }
-        System.out.println("What type of question do you want to add?");
-        System.out.println("Enter 1 for a multiple choice question");
-        System.out.println("Enter 2 for a open question");
-        int questionType = getIntegerFromUser();
-        while (questionType < 1 || questionType > 2) {
-            System.out.println("Invalid choice, please try again");
-            questionType = getIntegerFromUser();
-        }
-        System.out.println("Which difficulty do you want to assign to the question?");
-        System.out.println("Enter 1 for easy");
-        System.out.println("Enter 2 for medium");
-        System.out.println("Enter 3 for hard");
-        BaseQuestion.questionDifficulty difficulty;
-        int choice = getIntegerFromUser();
-        while (choice < 1 || choice > 3) {
-            System.out.println("Invalid choice, please try again");
-            choice = getIntegerFromUser();
-        }
-        difficulty = BaseQuestion.questionDifficulty.values()[choice - 1];
-        if (questionType == 1)
-            dataBase.addQuestion(new MultiQuestion(question, difficulty));
-        else
-            dataBase.addQuestion(new OpenQuestion(question, difficulty));
-        System.out.println("Question added successfully");
-
-    }
-
     private static void addAnswerToMultiQuestion(int questionNumber) {//delete
         MultiQuestion tmp = (MultiQuestion) dataBase.getQuestion(questionNumber);
         boolean isCorrect;
@@ -383,19 +348,6 @@ public class Program {
         System.out.println("Answer added successfully!");
     }
 
-    public static void addAnswerToQuestion() {
-        Sql_functions.printQuestionsAndAnswers();
-        System.out.println("Enter the question number you want to add the answer to: ");
-        int questionNumber = getIntegerFromUser() - 1;
-        if (questionNumber < 0 || questionNumber >= dataBase.getNumOfQuestions()) {
-            System.out.println("No such index exists in the database.\nReturning to main menu...");
-            return;
-        }
-        if (dataBase.getQuestion(questionNumber) instanceof MultiQuestion)
-            addAnswerToMultiQuestion(questionNumber);
-        else
-            addAnswerToOpenQuestion(questionNumber);
-    }
 
     public static void addAnswerToQuestionSQL(Connection conn,int questionNumber,int answerNumber) {
         String type = Sql_functions.getQuestionType(conn,questionNumber);
@@ -500,19 +452,20 @@ public class Program {
 
     public static void main(String[] args) throws IOException {
         Connection conn= Sql_functions.getConnection();
-//        System.out.println("Choose user: (Write user ID)");
-//        loadUsers(conn);
-//        int i = 0;
-//        for(User user: userManager.getUsers()){
-//            System.out.println(user);
-//        }
-//        int userId = getIntegerFromUser();
-//
-//        User user = userManager.getUserById(userId);
-//        if(user == null){
-//            System.out.println("User not found");
-//            return;
-//        }
+
+        loadUsers(conn);
+        int i = 0;
+        for(User user: userManager.getUsers()){
+            System.out.println(user);
+        }
+                System.out.println("Choose user: (Write user ID)");
+        int userId = getIntegerFromUser();
+
+        User user = userManager.getUserById(userId);
+        if(user == null){
+            System.out.println("User not found");
+            return;
+        }
         int choice;
         boolean flag = true;
         System.out.println(
@@ -576,17 +529,13 @@ public class Program {
                     //to create a way to turn questions(multi or open) to objects from the database!!
                     createExam(conn);
                 }
-//                case 8 -> addUser();
+                case 8 -> addUser();
                 case 9 -> deleteUser();
                 default -> System.out.println("Invalid choice");
             }
         } while (flag);
         Sql_functions.closeConnection(conn);
         System.out.println("Exiting the program...");
-//        ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(filePath));
-//        out.writeObject(dataBase);
-//        out.writeInt(BaseQuestion.getCounter());
-//        out.close();
         System.out.println(
                 "-------------------------------------------\n" +
                         "|               Goodbye !                 |\n" +
@@ -612,33 +561,90 @@ public class Program {
     }
 
     private static void deleteUser() {
-        System.out.println("Enter the ID of the user you want to delete: ");
-        printAllUsers();
+        Connection conn = Sql_functions.getConnection();
+        printAllUsers(conn);  // This function should query and print all users from the database
+        System.out.println("Enter the ID of the user you want to delete:");
         int id = getIntegerFromUser();
-        userManager.deleteUser(id);
-        System.out.println("User deleted successfully");
+
+        String sql = "DELETE FROM users WHERE userid = ?";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, id);
+            int affectedRows = pstmt.executeUpdate();
+            if (affectedRows > 0) {
+                System.out.println("User deleted successfully.");
+            } else {
+                System.out.println("No user found with ID: " + id + ", or deletion failed.");
+            }
+        } catch (SQLException e) {
+            System.out.println("Failed to delete user: " + e.getMessage());
+        }
+
+
+        Sql_functions.closeConnection(conn);
     }
 
-    private static void printAllUsers() {
-        List<User> users = userManager.getUsers();
-        for (User user : users) {
-            System.out.println("ID: " + user.getId() + " Username: " + user.getUsername() + " Type: " + user.getType());
+    public static void printAllUsers(Connection conn) {
+        String sql = "SELECT userid, username, userrole FROM users ORDER BY userid";
+
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            System.out.println("Available Users:");
+            System.out.println("ID\tUsername\tRole");
+            while (rs.next()) {
+                int userId = rs.getInt("userid");
+                String username = rs.getString("username");
+                String role = rs.getString("userrole");
+                System.out.println(userId + "\t" + username + "\t" + role);
+            }
+        } catch (SQLException e) {
+            System.out.println("Failed to load users: " + e.getMessage());
         }
     }
 
-//    private static void addUser() {
-//        System.out.println("Enter the username: ");
-//        String username = getStringFromUser();
-//        System.out.println("Enter the type of the user: ");
-//        System.out.println("1 - Admin\n2 - Teacher");
-//        int choice = getIntegerFromUser();
-//        while (choice < 1 || choice > 2) {
-//            System.out.println("Invalid choice, please try again");
-//            choice = getIntegerFromUser();
-//        }
-//        userManager.addUser(new User(username, choice == 1 ? User.UserType.ADMIN : User.UserType.TEACHER));
-//        System.out.println("User added successfully");
-//    }
+    public static void addUser() {
+        Connection conn = Sql_functions.getConnection();
+        System.out.println("Enter the username: ");
+        String username = getStringFromUser();
+
+        System.out.println("Enter the type of the user (ADMIN or TEACHER):");
+        String userTypeInput = getUserTypeFromInput();
+
+        // Cast the input string to the enum type explicitly in the SQL query
+        String sql = "INSERT INTO users (username, userrole) VALUES (?, ?::user_role)";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            pstmt.setString(1, username);
+            pstmt.setString(2, userTypeInput);
+            int affectedRows = pstmt.executeUpdate();
+
+            if (affectedRows > 0) {
+                try (ResultSet rs = pstmt.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        int userId = rs.getInt(1);  // Assuming 'userid' is an auto-increment field
+                        System.out.println("User added successfully with ID: " + userId);
+                    }
+                }
+            } else {
+                System.out.println("No user was added, please check your data.");
+            }
+        } catch (SQLException e) {
+            System.out.println("Failed to add user: " + e.getMessage());
+        }
+        Sql_functions.closeConnection(conn);
+    }
+
+    private static String getUserTypeFromInput() {
+        Scanner scanner = new Scanner(System.in);
+        String input = scanner.nextLine().trim().toUpperCase();
+        while (!input.equals("ADMIN") && !input.equals("TEACHER")) {
+            System.out.println("Invalid choice, please type 'ADMIN' or 'TEACHER':");
+            input = scanner.nextLine().trim().toUpperCase();
+        }
+        return input;
+    }
+
+
 
 
     private static String selectDatabase() {
@@ -803,7 +809,7 @@ public class Program {
             while (rs.next()) {
                 int id = rs.getInt("userid");
                 String username = rs.getString("username");
-                String type = rs.getString("type");
+                String type = rs.getString("userrole");
 
                 User.UserType userType = User.UserType.valueOf(type.toUpperCase());
                 userManager.addUser(new User(id, username, userType));
@@ -812,4 +818,7 @@ public class Program {
             System.out.println("Failed to load users: " + e.getMessage());
         }
     }
+
+
+
 }
