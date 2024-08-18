@@ -74,7 +74,7 @@ public class Sql_functions {
 
                 if ("OPEN".equalsIgnoreCase(type)) {
                     // Print open question answer directly
-                    System.out.println("\tAnswer: " + atext + (correct ? " (Correct)" : ""));
+                    System.out.println("\tAnswer: " + atext );
                 } else {
                     // Print multiple choice question answers with letter prefixes
                     System.out.println("\t" + answerPrefix++ + ") " + atext + (correct ? " (Correct)" : ""));

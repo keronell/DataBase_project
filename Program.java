@@ -17,6 +17,8 @@ public class Program {
     static UserManager userManager = new UserManager(); // Create a static instance of UserManager
     public static Scanner sc = new Scanner(System.in);
     public static DataBase dataBase = new DataBase();
+    public static int userID;
+
 
 
     private static boolean isInArray(int[] track, int number) {
@@ -177,9 +179,61 @@ public class Program {
             }
         }
     }
+    public static void moveQtoExam(int q_id){
+        Connection conn = Sql_functions.getConnection();
+        if (conn == null) {
+            System.out.println("Failed to establish a connection to the database.");
+            return;
+        }
 
-    public static void createExam(Connection conn) {
+        // Check if the question already exists in the exam_database
+        String checkExistenceSql = "SELECT COUNT(*) FROM exam_database WHERE q_id = ?";
+        try (PreparedStatement checkStmt = conn.prepareStatement(checkExistenceSql)) {
+            checkStmt.setInt(1, q_id);
+            ResultSet rs = checkStmt.executeQuery();
+            if (rs.next() && rs.getInt(1) > 0) {
+                System.out.println("Question ID " + q_id + " already exists in the exam_database. Operation aborted.");
+                return;
+            }
+        } catch (SQLException e) {
+            System.out.println("Error checking existence: " + e.getMessage());
+            return;
+        }
+
+        // Determine the type of the question
+        String type = Sql_functions.getQuestionType(conn, q_id);
+        String sqlInsert;
+
+        if ("open".equalsIgnoreCase(type)) {
+            // For open questions, assume only one answer needs to be moved.
+            sqlInsert = "INSERT INTO exam_database (q_id, ans_id) " +
+                    "SELECT q_id, ans_id FROM QandA WHERE q_id = ? LIMIT 1";
+        } else {
+            // For multiple choice questions, move all associated answers.
+            sqlInsert = "INSERT INTO exam_database (q_id, ans_id) " +
+                    "SELECT q_id, ans_id FROM QandA WHERE q_id = ?";
+        }
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sqlInsert)) {
+            pstmt.setInt(1, q_id);
+            int affectedRows = pstmt.executeUpdate();
+            if (affectedRows > 0) {
+                System.out.println("Successfully moved question and its answers to exam_database.");
+            } else {
+                System.out.println("No answers were moved to exam_database.");
+            }
+        } catch (SQLException e) {
+            System.out.println("Failed to move question and answers to exam_database: " + e.getMessage());
+        }
+
         Sql_functions.closeConnection(conn);
+    }
+
+
+
+
+    public static void createExam() {
+
         System.out.println("-------------------------------------------");
         System.out.println("|                                         |");
         System.out.println("|            Exam Creator Tool            |");
@@ -196,6 +250,7 @@ public class Program {
             System.out.println("Enter the question ID you want to add to the exam: ");
             int q_id = getIntegerFromUser();
             Sql_functions.getQuestionByID(DB,q_id);
+            moveQtoExam(q_id);
             System.out.println("Do you want to add another question? (true/false)");
             flag = getBooleanFromUser();
         }
@@ -400,19 +455,21 @@ public class Program {
 
     }
 
-    public static void addQuestionSQL(Connection conn) {
+    public static void addQuestionSQL() {
+        Connection conn = Sql_functions.getConnection();
         System.out.println("Enter the question text:");
         String questionText = getStringFromUser();
 
         Difficulty difficulty = getValidDifficulty();
         QuestionType questionType = getValidQuestionType();
 
-        String sql = "INSERT INTO question (q_text, difficulty, qtype) VALUES (?, ?::difficulty_level, ?::question_type) RETURNING q_id";
+        String sql = "INSERT INTO question (q_text, difficulty, qtype, author_id) VALUES (?, ?::difficulty_level, ?::question_type, ?) RETURNING q_id";
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, questionText);
             pstmt.setString(2, difficulty.name().toUpperCase());
             pstmt.setString(3, questionType.name().toUpperCase());
+            pstmt.setInt(4, userID); // Set the user ID parameter
             ResultSet rs = pstmt.executeQuery();
 
             if (rs.next()) {
@@ -422,7 +479,9 @@ public class Program {
         } catch (SQLException e) {
             System.out.println("Failed to add question: " + e.getMessage());
         }
+        Sql_functions.closeConnection(conn);
     }
+
 
 
 
@@ -468,6 +527,7 @@ public class Program {
         }
         int choice;
         boolean flag = true;
+        userID = user.getId();
         System.out.println(
                 "-------------------------------------------\n" +
                         "|                                         |\n" +
@@ -506,7 +566,7 @@ public class Program {
                     }
                     addAnswerToQuestionSQL(conn,questionNumber,answerNumber);//V
                 }
-                case 4 -> addQuestionSQL(conn);//V
+                case 4 -> addQuestionSQL();//V
                 case 5 -> {//V
                     boolean indexCheck= false;
                     int questionNumber=-1,answerNumber = -1;
@@ -527,7 +587,7 @@ public class Program {
                     //to take each question from the qANDa datatbase and add them to DB
                     //to take each Answers from the qANDa datatbase and add them to DB
                     //to create a way to turn questions(multi or open) to objects from the database!!
-                    createExam(conn);
+                    createExam();
                 }
                 case 8 -> addUser();
                 case 9 -> deleteUser();
@@ -801,7 +861,7 @@ public class Program {
     }
 
     public static void loadUsers(Connection conn) {
-        String sql = "SELECT * FROM users";
+        String sql = "SELECT * FROM users ORDER BY userid";
 
         try (Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {

@@ -29,7 +29,7 @@ public class User {
 
     @Override
     public String toString() {
-        System.out.println("User: " + identifier + " " + username + " " + type);
-        return super.toString();
+        return "UserID: " + identifier + " " + username + " " + type;
     }
+
 }
